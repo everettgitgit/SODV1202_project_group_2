@@ -5,12 +5,40 @@ namespace ConnectFourGame {
         // Constants for board dimensions
         public const int Rows = 6;
         public const int Columns = 7;
+        private string[,] grid = new string[Rows, Columns];
 
         // Constructor
-        public Board() { }
+        public Board() 
+        {
+            for (int i = 0; i < Rows; i++)
+            {
+                for (int j = 0; j < Columns; j++)
+                {
+                    grid[i, j] = " ";
+                }
+            }
+        }
+
 
         // Method to place a symbol on the board
-        public bool PlaceSymbol(int column, string symbol) { }
+        public bool PlaceSymbol(int column, string symbol)        
+        {
+            if (column < 0 || column >= Columns)
+            {
+                return false; // Column out of bounds
+            }
+
+            for (int i = Rows - 1; i >= 0; i--)
+            {
+                if (grid[i, column] == " ")
+                {
+                    grid[i, column] = symbol;
+                    return true;
+                }
+            }
+
+            return false; // Column is full
+        }
 
         // Method to check for a win
         public bool CheckForWin(string symbol) { }
