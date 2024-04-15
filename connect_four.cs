@@ -1,38 +1,30 @@
 using System;
+using System.Collections.Generic;
 
 namespace ConnectFourGame
 {
     public class move
     {
-    public int Index { get; set; }
-    public int Score { get; set; }
+        public int Index { get; set; }
+        public int Score { get; set; }
 
-    public move(int index, int score)
-    {
-        Index = index;
-        Score = score;
+        public move(int index, int score)
+        {
+            Index = index;
+            Score = score;
+        }
     }
-}
     
     public class Board
     {
         public const int Rows = 6;
         public const int Columns = 7;
-        private string[,] grid = new string[Rows, Columns];
 
         public string currentState { get; protected set; }
         public List<int> indexRecord { get; protected set; }
         
         public Board()
         {
-            for (int i = 0; i < Rows; i++)
-            {
-                for (int j = 0; j < Columns; j++)
-                {
-                    grid[i, j] = " ";
-                }
-            }
-
             currentState = startState;
             indexRecord = startRecord;
         }
@@ -70,128 +62,275 @@ namespace ConnectFourGame
             return -1;
         }
 
-        public bool PlaceSymbol(int column, string symbol)
+        public void PlaceSymbol(int index, char symbol)
         {
-            if (column < 0 || column >= Columns)
-            {
-                return false; // Column out of bounds
-            }
-
-            for (int i = Rows - 1; i >= 0; i--)
-            {
-                if (grid[i, column] == " ")
-                {
-                    grid[i, column] = symbol;
-                    return true;
-                }
-            }
-
-            return false; // Column is full
+            char[] changeState = currentState.ToCharArray();            // set state to char array for checking
+            changeState[index] = symbol;                                // change symbol
+            UpdateCurrentState(new string(changeState));                // update state
+            PushNewIndex(index);
         }
 
-        public bool CheckForWin(string symbol)
+        public bool CheckForWin(string state, int index, char symbol)
         {
             // Check horizontal, vertical, and diagonal wins
-            return CheckHorizontalWin(symbol) || CheckVerticalWin(symbol) || CheckDiagonalWin(symbol);
-        }
+            int horizonalEval = EvaluateHorizonal(state, index, symbol);
+            int verticalEval = EvaluateVertical(state, index, symbol);
+            int diagonalUpDownEval = EvaluateDiagonalUpDown(state, index, symbol);
+            int diagonalDownUpEval = EvaluateDiagonalDownUp(state, index, symbol);
 
-        private bool CheckHorizontalWin(string symbol)
-        {
-            for (int i = 0; i < Rows; i++)
+            if (horizonalEval == 4 || verticalEval == 4 || diagonalDownUpEval == 4 || diagonalUpDownEval == 4)      // if any evalutions returns a 4, return a winning state
             {
-                for (int j = 0; j < Columns - 3; j++)
-                {
-                    if (grid[i, j] == symbol && grid[i, j + 1] == symbol && grid[i, j + 2] == symbol && grid[i, j + 3] == symbol)
-                    {
-                        return true;
-                    }
-                }
+                return true;
             }
+
             return false;
         }
 
-        private bool CheckVerticalWin(string symbol)
+        protected int EvaluateHorizonal(string state, int index, char symbol)
         {
-            for (int i = 0; i < Rows - 3; i++)
+            bool before = true;
+            bool after = true;
+            int count = 1;
+    
+            for (int i = 1; i < 4; i++) 
             {
-                for (int j = 0; j < Columns; j++)
+                if (index - (i * 6) < 0)                        // if next left check is out of index, do not check further
                 {
-                    if (grid[i, j] == symbol && grid[i + 1, j] == symbol && grid[i + 2, j] == symbol && grid[i + 3, j] == symbol)
+                    before = false;
+                }
+
+                if (index + (i * 6) > MAX_INDEX)                // if next right check is out of index, do not check further
+                {
+                    after = false;
+                }
+
+                if (!before && !after)                          // if there are no connecting symbols on either side, break from check and continue
+                {
+                    return count;
+                }
+
+                if (before)                                     // begin left side checking
+                {
+                    if (state[index - (i * 6)] == symbol)       // if matching symbol found, increase current count
                     {
-                        return true;
+                        count++;
+                    }
+                    else                                        // if non matching symbol found, do not check further
+                    {
+                        before = false;
+                    }
+                }
+
+                if (after)                                      // begin right side checking
+                {
+                    if (state[index + (i * 6)] == symbol)       // if matching symbol found, increase current count
+                    {
+                        count++;
+                    }
+                    else                                        // if non matching symbol found, do not check further
+                    {
+                        after = false;
                     }
                 }
             }
-            return false;
+
+            return count;                                       // if for some reason no offical count was returned, return the current count    
         }
 
-        private bool CheckDiagonalWin(string symbol)
+        protected int EvaluateVertical(string state, int index, char symbol)
         {
-            // Check diagonals
-            for (int i = 3; i < Rows; i++)
+            int BEFORE_CHECK = index - (index % 6);
+            int AFTER_CHECK = index - (index % 6) + 5;
+
+            bool before = true;
+            bool after = true;
+            int count = 1;
+
+            for (int i = 1; i < 4; i++)
             {
-                for (int j = 0; j < Columns - 3; j++)
+                if (index - i < BEFORE_CHECK)                   // if next below check is out of index, do not check further
                 {
-                    if (grid[i, j] == symbol && grid[i - 1, j + 1] == symbol && grid[i - 2, j + 2] == symbol && grid[i - 3, j + 3] == symbol)
+                    before = false;
+                }
+
+                if (index + i > AFTER_CHECK)                    // if next above check is out of index, do not check further
+                {        
+                    after = false;
+                }
+
+                if (!before && !after)                          // if there are no connecting symbols on either side, break from check and continue
+                {
+                    return count;
+                }
+
+                if (before)                                     // begin left side checking
+                {
+                    if (state[index - i] == symbol)             // if matching symbol found, increase current count
                     {
-                        return true;
+                        count++;
+                    }
+                    else                                        // if non matching symbol found, do not check further
+                    {
+                        before = false;
+                    }
+                }
+    
+                if (after)                                      // begin right side checking
+                {
+                    if (state[index + i] == symbol)             // if matching symbol found, increase current count
+                    {
+                        count++;
+                    }
+                    else                                        // if non matching symbol found, do not check further
+                    {
+                        after = false;
+                    }
+                }
+            }    
+
+            return count;                                       // if for some reason no offical count was returned, return the current count
+        }
+
+        protected int EvaluateDiagonalUpDown(string state, int index, char symbol)
+        {
+            int BEFORE_CHECK = index - 25 + (5 * (index % 6));
+            int AFTER_CHECK = index + (5 * (index % 6));
+
+            bool before = true;
+            bool after = true;
+            int count = 1;
+
+            for (int i = 1; i < 4; i++)
+            {
+                if (index - (5 * i) < 0 || index - (5 * i) < BEFORE_CHECK)              // if next upper left check is out of index, do not check further
+                {
+                    before = false;
+                }
+
+                if (index + (5 * i) > MAX_INDEX || index + (5 * i) > AFTER_CHECK)       // if next lower right check is out of index, do not check further
+                {
+                    after = false;
+                }
+
+                if (!before && !after)                                                  // if there are no connecting symbols on either side, break from check and continue
+                {
+                    return count;
+                }
+
+                if (before)                                                             // begin upper left side checking
+                {
+                    if (state[index - (5 * i)] == symbol)                               // if matching symbol found, increase current count
+                    {
+                        count++;
+                    }
+                    else                                                                // if non matching symbol found, do not check further
+                    {
+                        before = false;
+                    }
+                }
+
+                if (after)                                                              // begin lower right side checking
+                {
+                    if (state[index + (5 * i)] == symbol)                               // if matching symbol found, increase current count
+                    {
+                        count++;
+                    }
+                    else                                                                // if non matching symbol found, do not check further
+                    {
+                        after = false;
                     }
                 }
             }
 
-            for (int i = 3; i < Rows; i++)
+            return count;                                                               // if for some reason no offical count was returned, return the current count
+        }
+
+        protected int EvaluateDiagonalDownUp(string state, int index, char symbol)
+        {
+            int BEFORE_CHECK = index - (7 * (index % 6));
+            int AFTER_CHECK = index + 35 - (7 * (index % 6));
+
+            bool before = true;
+            bool after = true;
+            int count = 1;
+
+            for (int i = 1; i < 4; i++)
             {
-                for (int j = 3; j < Columns; j++)
+                if (index - (7 * i) < 0 || index - (7 * i) < BEFORE_CHECK)              // if next lower left check is out of index, do not check further
                 {
-                    if (grid[i, j] == symbol && grid[i - 1, j - 1] == symbol && grid[i - 2, j - 2] == symbol && grid[i - 3, j - 3] == symbol)
+                    before = false;
+                }
+
+                if (index + (7 * i) > MAX_INDEX || index + (7 * i) > AFTER_CHECK)       // if next upper right check is out of index, do not check further
+                {
+                    after = false;
+                }
+
+                if (!before && !after)                                                  // if there are no connecting symbols on either side, break from check and continue
+                {
+                    return count;
+                }
+
+                if (before)                                                             // begin lower left side checking
+                {
+                    if (state[index - (7 * i)] == symbol)                               // if matching symbol found, increase current count
                     {
-                        return true;
+                        count++;
+                    }
+                    else                                                                // if non matching symbol found, do not check further
+                    {
+                        before = false;
+                    }
+                }
+
+                if (after)                                                              // begin upper right side checking
+                {
+                    if (state[index + (7 * i)] == symbol)                               // if matching symbol found, increase current count
+                    {
+                        count++;
+                    }               
+                    else                                                                // if non matching symbol found, do not check further
+                    {
+                        after = false;
                     }
                 }
             }
-            return false;
+
+            return count;                                                               // if for some reason no offical count was returned, return the current count
         }
 
         public void Display()
         {
-            for (int i = 0; i < Rows; i++)
+            char[] displayBoard = currentState.Replace('-', ' ').ToCharArray();
+
+            Console.Clear();
+            Console.WriteLine("");
+
+            for (int i = ROWS - 1; i >= 0; i--)
             {
-                for (int j = 0; j < Columns; j++)
-                {
-                    Console.Write($"|{grid[i, j]}");
+                for (int j = 0; j < COLUMNS; j++)
+                {    
+                    Console.Write($"|{displayBoard[i + (j * 6)]}");
                 }
                 Console.WriteLine("|");
             }
-            Console.WriteLine(new string('-', Columns * 2));
+
+            for (int i = 1; i <= COLUMNS; i++)
+            {
+                Console.Write(" {0}", i);
+            }
+
+            Console.WriteLine("\n");
         }
 
         public bool IsFull()
         {
-            for (int j = 0; j < Columns; j++)
+            if (currentState.Contains("-"))
             {
-                if (grid[0, j] == " ")
-                {
-                    return false;
-                }
+                return false;
             }
+
             return true;
-        }
-
-        public bool CanPlaceSymbol(int column)
-        {
-            return grid[0, column] == " ";
-        }
-
-        public void RemoveSymbol(int column)
-        {
-            for (int i = 0; i < Rows; i++)
-            {
-                if (grid[i, column] != " ")
-                {
-                    grid[i, column] = " ";
-                    break;
-                }
-            }
         }
     }
 
@@ -253,7 +392,7 @@ namespace ConnectFourGame
     {
         public string Symbol { get; protected set; }
 
-        protected Player(string symbol)
+        protected Player(char symbol)
         {
             Symbol = symbol;
         }
@@ -263,7 +402,7 @@ namespace ConnectFourGame
 
     public class HumanPlayer : Player
     {
-        public HumanPlayer(string symbol) : base(symbol) { }
+        public HumanPlayer(char symbol) : base(symbol) { }
 
         public override int ChooseColumn(Board board)
         {
@@ -281,32 +420,155 @@ namespace ConnectFourGame
 
     public class ComputerPlayer : Player
     {
-        public ComputerPlayer(string symbol) : base(symbol) { }
+        public ComputerPlayer(char symbol) : base(symbol) { }
 
         public override int ChooseColumn(Board board)
         {
-            // Implement AI Logic here
-            // random column
-            Random rnd = new Random();
-            int col;
-            do
+            TestableBoard testBoard = new TestableBoard(board.currentState, board.indexRecord);         // initialize a new test board to access test methods and avoid altering the actual game board
+
+            List<move> moves = new List<move>();
+
+            int depth = 7;                                                                              // ai search depth kept at 7 as program may crash with higher depths
+
+            for (int i = 0; i < testBoard.getColumns() - 1; i++)                                        // search for all initial possible moves
             {
-                col = rnd.Next(Board.Columns);
-            } while (!board.CanPlaceSymbol(col));
-            return col;
+                if (testBoard.CheckMove(i) >= 0)
+                {
+                    moves.Add(new move(i, 0));
+                }
+            }
+
+            int finalEval = Search(testBoard, moves, depth, -5, 5, 'O', true);                          // inital call to search function with current depth, range of [-5, 5], and with score setting true
+
+            List<int> optimalColumns = new List<int>();
+
+            for (int i = 0; i < moves.Count - 1; i++)                                                   // loop through all initial possible moves
+            {
+                if (testBoard.indexRecord.Count < 4 && (i == 0 || i == 1 || i == 5 || i == 6))          // if less than 4 moves have been played, dont play on the edges
+                {
+                    continue;
+                }
+                
+                if (moves[i].Score == finalEval)
+                {
+                    optimalColumns.Add(moves[i].Index);
+                }
+            }
+
+            if (optimalColumns.Count > 1)                                                               // if multiple positions were found with an equal score, pick a random one out of them
+            {
+                Random rand = new Random();
+                int r = rand.Next(optimalColumns.Count);
+                return optimalColumns[r];
+            }
+
+            return optimalColumns[0];                                                                   // if only one position was found, return that position
+        }
+
+        public int Search(TestableBoard board, List<move> moveList, int depth, int alpha, int beta, char currentPlayer, bool setScore)
+        {
+            /*
+             
+            This is the main method that handles the ai
+
+            Implements a version that mixes Minimax and Negamax features with low level alpha-beta pruning
+
+            -- params --
+
+            board - holds the current test board
+            
+            moveList - holds the initial moves to check - setScore says whether or not those values are currently in scope to store
+            
+            depth - tells the search method the limit to which it recursively call itself
+            
+            alpha and beta - hold a range of values in which to search the current scope for. Simply put, if a searched value is outside of that scope, we 'prune' that branch of the search to reduce searched conditions
+            
+            current player - stores the symbol of the player who is being teseted
+
+            setScore - tells search method if it should store score values to moveList
+
+            */
+            
+            
+            
+            if (board.indexRecord.Count == board.getRows() * board.getColumns())        // if board is full return draw
+            {
+                if (setScore)
+                {
+                    moveList[board.indexRecord[board.indexRecord.Count - 1]].Score = 0;
+                }
+
+                return 0;
+            }
+
+            if (depth == 0)         // if the depth is at 0, return a static evaluation of the position
+            {
+                if (setScore)
+                {
+                    moveList[board.indexRecord[board.indexRecord.Count - 1]].Score = board.EvalCurrentState(board.currentState, board.indexRecord[board.indexRecord.Count - 1], currentPlayer);
+                }
+
+                return board.EvalCurrentState(board.currentState, board.indexRecord[board.indexRecord.Count - 1], currentPlayer);
+            }
+
+            for (int i = 0; i < board.getColumns() - 1; i++)        // before placing next value, check if any placements immediately return a win condition. If so, return win score
+            {
+                if (board.CheckMove(i) >= 0 && board.CheckForWin(board.currentState, board.CheckMove(i), currentPlayer))
+                {
+                    if (setScore)
+                    {
+                        moveList[i].Score = 4;
+                    }
+
+                    return 4;
+                }
+            }
+
+            int maxEval = -5;                                                                                       // initialize maxEval to lowest possible score
+
+            for (int i = 0; i < board.middleToOut.Length - 1; i++)                                                  // loop through idecies from inner to outer
+            {
+                int position = board.CheckMove(board.middleToOut[i]);                                               // check the current position if it is valid, if not do not play
+
+                if (position >= 0)
+                {
+                    char nextPlayer = ' ';                                                                          // set value for next player
+                    if (currentPlayer == 'O') { nextPlayer = 'X'; }
+                    if (currentPlayer == 'X') { nextPlayer = 'O'; }
+
+                    board.PlaceSymbol(position, currentPlayer);                                                     // place symbol in test board
+
+                    int eval = -Search(board, new List<move>(), depth - 1, -beta, -alpha, nextPlayer, false);       // recusive call on search function with depth - 1, score range of [-beta, alpha], and no setting of move scores
+
+                    board.RemoveSymbol(position);                                                                   // remove the current position in depth scope 
+
+                    maxEval = Math.Max(maxEval, eval);                                                              // get the highest value between maxEval and searched eval
+
+                    alpha = Math.Max(alpha, eval);                                                                  // decrease score range depedning on serached eval
+
+                    if (setScore)
+                    {
+                        moveList[board.middleToOut[i]].Score = maxEval;
+                    }
+
+                    if (beta <= alpha) { break; }                                                                   // if found position lies out of score range, do not check further in loop
+                }
+            }
+
+            return maxEval;
         }
     }
 
     public class Game
     {
-        private Board board = new Board();
+        private Board board = new Board("------------------------------------------", new List<int>());
         private Player[] players = new Player[2];
         private int currentPlayerIndex = 0;
 
         public Game(bool playAgainstComputer)
         {
-            players[0] = new HumanPlayer("X");
-            players[1] = playAgainstComputer ? (Player)new ComputerPlayer("O") : new HumanPlayer("O");
+            players[0] = new HumanPlayer('X');
+            players[1] = playAgainstComputer ? (Player)new ComputerPlayer('O') : new HumanPlayer('O');
         }
 
         public void Start()
@@ -316,24 +578,29 @@ namespace ConnectFourGame
             {
                 board.Display();
                 Player currentPlayer = players[currentPlayerIndex];
-                bool validMove = false;
+                int validMove = -1;
                 int columnChoice = -1;
 
-                while (!validMove)
+                while (validMove < 0)
                 {
                     columnChoice = currentPlayer.ChooseColumn(board);
-                    validMove = board.PlaceSymbol(columnChoice, currentPlayer.Symbol);
-                    if (!validMove)
+                    validMove = board.CheckMove(columnChoice);
+
+                    if (validMove >= 0)
+                    {
+                        board.PlaceSymbol(validMove, currentPlayer.Symbol);
+                    }
+                    else
                     {
                         Console.WriteLine("Invalid move, try again.");
                     }
                 }
 
-                gameEnded = board.CheckForWin(currentPlayer.Symbol);
+                gameEnded = board.CheckForWin(board.currentState, validMove, currentPlayer.Symbol);
 
+                board.Display();
                 if (gameEnded)
-                {
-                    board.Display();
+                {    
                     Console.WriteLine($"Player {currentPlayer.Symbol} wins!");
                 }
                 else if (board.IsFull())
