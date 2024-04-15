@@ -2,12 +2,27 @@ using System;
 
 namespace ConnectFourGame
 {
+    public class move
+    {
+    public int Index { get; set; }
+    public int Score { get; set; }
+
+    public move(int index, int score)
+    {
+        Index = index;
+        Score = score;
+    }
+}
+    
     public class Board
     {
         public const int Rows = 6;
         public const int Columns = 7;
         private string[,] grid = new string[Rows, Columns];
 
+        public string currentState { get; protected set; }
+        public List<int> indexRecord { get; protected set; }
+        
         public Board()
         {
             for (int i = 0; i < Rows; i++)
@@ -17,6 +32,42 @@ namespace ConnectFourGame
                     grid[i, j] = " ";
                 }
             }
+
+            currentState = startState;
+            indexRecord = startRecord;
+        }
+
+        protected void UpdateCurrentState(string State)
+        {
+            currentState = State;
+        }
+
+        protected void PushNewIndex(int index)
+        {
+            indexRecord.Add(index);
+        }
+
+        public override string ToString()
+        {
+            return currentState;
+        }
+
+        public int CheckMove(int column)
+        {
+            if (column < 0 || column >= COLUMNS)
+            {
+                return -1; // Column out of bounds
+            }
+
+            int columnIndex = column * 6;
+            string columnCheck = currentState.Substring(columnIndex, 6);
+    
+            if (columnCheck.Contains("-"))
+            {
+                return columnIndex + columnCheck.IndexOf('-');
+            }
+
+            return -1;
         }
 
         public bool PlaceSymbol(int column, string symbol)
@@ -141,6 +192,60 @@ namespace ConnectFourGame
                     break;
                 }
             }
+        }
+    }
+
+    public class TestableBoard : Board
+    {
+        public int[] middleToOut { get; private set; }
+
+        public TestableBoard(string state, List<int> indexRecord) : base(state, indexRecord) 
+        {
+            middleToOut = new int[] { 2, 3, 1, 4, 0, 5 };
+        }
+        
+        public int getRows()
+        {
+            return ROWS;
+        }
+
+        public int getColumns()
+        {
+            return COLUMNS;
+        }
+        
+        private void RemoveIndex(int index)
+        {
+            indexRecord.Remove(index);
+        }
+    
+        public void RemoveSymbol(int index)
+        {
+            char[] changeState = currentState.ToCharArray();
+            changeState[index] = '-';
+
+            UpdateCurrentState(new string(changeState));
+            RemoveIndex(index);
+        }
+
+        public int EvalCurrentState(string state, int index, char symbol)
+        {
+            int horizonalEval = EvaluateHorizonal(state, index, symbol);
+            int verticalEval = EvaluateVertical(state, index, symbol);
+            int diagonalUpDownEval = EvaluateDiagonalUpDown(state, index, symbol);
+            int diagonalDownUpEval = EvaluateDiagonalDownUp(state, index, symbol);
+
+            if (horizonalEval == 1 && verticalEval == 1 && diagonalUpDownEval == 1 && diagonalDownUpEval == 1)
+            {
+                return 0;
+            }
+
+            int result = 0;
+            result = Math.Max(horizonalEval, verticalEval);
+            result = Math.Max(result, diagonalUpDownEval);
+            result = Math.Max(result, diagonalDownUpEval);
+
+            return result;
         }
     }
 
